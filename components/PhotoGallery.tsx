@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Image } from '@react-three/drei';
 import * as THREE from 'three';
@@ -29,12 +29,13 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
 }) => {
   const ref = useRef<THREE.Group>(null);
   
-  // Choose frame color based on index
+  // Default aspect ratio (will update once image loads)
+  const [aspect, setAspect] = useState(0.75);
+
   const frameColor = useMemo(() => {
     return FRAME_PALETTE[index % FRAME_PALETTE.length];
   }, [index]);
 
-  // Calculate positions (Tree vs Chaos)
   const { targetPos, randomPos, targetRot } = useMemo(() => {
     const ratio = (index + 1) / (CONFIG.PHOTO_COUNT + 1);
     const h = ratio * CONFIG.TREE_HEIGHT - (CONFIG.TREE_HEIGHT / 2);
@@ -64,7 +65,6 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
     if (!ref.current) return;
 
     if (isActive) {
-      // Logic for active (pointing) state
       const cameraPos = state.camera.position;
       const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(state.camera.quaternion);
       const cameraRight = new THREE.Vector3(1, 0, 0).applyQuaternion(state.camera.quaternion);
@@ -82,24 +82,23 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
       ref.current.position.lerp(basePos, delta * 3);
       ref.current.quaternion.slerp(state.camera.quaternion, delta * 3);
       
-      // Adaptive Scaling
+      // Dynamic Scaling based on detected aspect ratio
       const camera = state.camera as THREE.PerspectiveCamera;
       const vH = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * dist;
       const vW = vH * camera.aspect;
-      const imgAspect = 0.75;
       
       let targetH = vH * 0.85;
-      let targetW = targetH * imgAspect;
+      let targetW = targetH * aspect;
       
+      // Ensure it doesn't overflow horizontally
       if (targetW > vW * 0.85) {
         targetW = vW * 0.85;
-        targetH = targetW / imgAspect;
+        targetH = targetW / aspect;
       }
       
       ref.current.scale.lerp(new THREE.Vector3(targetW, targetH, 1), delta * 3);
 
     } else {
-      // Logic for idle (on tree) state
       const currentTarget = new THREE.Vector3().lerpVectors(targetPos, randomPos, unleashFactor);
       ref.current.position.lerp(currentTarget, delta * 2);
 
@@ -112,27 +111,30 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
       }
 
       const targetScale = isAnyActive ? 0 : 1;
-      ref.current.scale.lerp(new THREE.Vector3(0.5 * targetScale, 0.75 * targetScale, 1), delta * 4);
+      // Maintain aspect ratio while idle on the tree
+      ref.current.scale.lerp(new THREE.Vector3(0.7 * aspect * targetScale, 0.7 * targetScale, 1), delta * 4);
     }
   });
-return (
+
+  return (
     <group ref={ref}>
-      {/* 1. THE FRAME - Pushed back slightly */}
-      <mesh position={[0, 0, -0.05]}>
-        <boxGeometry args={[1.1, 1.1, 0.05]} />
-        <meshStandardMaterial 
-          color={frameColor} 
-          metalness={0.2} 
-          roughness={0.8} 
-        />
+      {/* 1. THE FRAME - Scales with the image aspect */}
+      <mesh position={[0, 0, -0.02]}>
+        <boxGeometry args={[1.05, 1.05, 0.05]} />
+        <meshStandardMaterial color={frameColor} metalness={0.2} roughness={0.8} />
       </mesh>
 
-      {/* 2. THE PHOTO - Simplified to avoid the JS error */}
+      {/* 2. THE PHOTO - Detects aspect on load */}
       <Image 
         url={url} 
         transparent 
         opacity={1}
         side={THREE.DoubleSide}
+        onLoad={(texture) => {
+          if (texture.image) {
+            setAspect(texture.image.width / texture.image.height);
+          }
+        }}
       />
     </group>
   );
@@ -143,7 +145,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ unleashFactor, activ
     <>
       {PHOTO_URLS.map((url, i) => (
         <PhotoItem 
-          key={`${url}-${i}`} // Unique key helps React re-render when images change
+          key={`${url}-${i}`} 
           index={i} 
           url={url} 
           unleashFactor={unleashFactor}
