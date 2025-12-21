@@ -16,12 +16,10 @@ function App() {
   const [activePhotoId, setActivePhotoId] = useState<number | null>(null);
   const [shuffledQueue, setShuffledQueue] = useState<number[]>([]);
   
-  // REFS FOR INSTANT LOGIC
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const isDisplayingRef = useRef(false); // Is a photo currently on screen?
-  const gestureLockRef = useRef(false); // Has this specific "pointing session" already triggered a photo?
+  const isDisplayingRef = useRef(false); 
+  const gestureLockRef = useRef(false); 
 
-  // Helper: Shuffle indices
   const getShuffledIndices = () => {
     const arr = Array.from({ length: PHOTO_URLS.length }, (_, i) => i);
     for (let i = arr.length - 1; i > 0; i--) {
@@ -32,10 +30,8 @@ function App() {
   };
 
   const triggerNextPhoto = useCallback(() => {
-    // 1. Block if a photo is already being displayed
     if (isDisplayingRef.current) return;
     
-    // 2. Set display lock immediately (Synchronous)
     isDisplayingRef.current = true;
 
     setShuffledQueue(prev => {
@@ -47,12 +43,12 @@ function App() {
       const nextId = currentQueue.pop();
       setActivePhotoId(nextId ?? 0);
 
-      // Start 5-second timer to auto-hide
+      // --- THE 5-SECOND LOCK ---
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setActivePhotoId(null);
         isDisplayingRef.current = false;
-        // Note: gestureLock remains TRUE until the user stops pointing
+        // The photo only returns to the tree after this timer finishes
       }, 5000);
 
       return currentQueue;
@@ -60,24 +56,28 @@ function App() {
   }, []);
 
   const handleVisionUpdate = useCallback((newState: GestureState) => {
+    // 1. Always update the state so the photo continues to follow hand coordinates
     setGestureState(newState);
 
+    // 2. TRIGGER LOGIC
     if (newState.gesture === 'Pointing_Up') {
-      // Only trigger if we aren't displaying AND we haven't already triggered for this specific point
       if (!isDisplayingRef.current && !gestureLockRef.current) {
         triggerNextPhoto();
-        gestureLockRef.current = true; // Lock it! User must stop pointing to unlock.
+        gestureLockRef.current = true; 
       }
     } else {
-      // User lowered their finger or changed gesture -> Unlock for next time
+      // If the user stops pointing, we ONLY reset the lock.
+      // We DO NOT set activePhotoId to null here.
       gestureLockRef.current = false;
-      
-      // If user makes a fist, close the current photo early
-      if (newState.gesture === 'Closed_Fist' && isDisplayingRef.current) {
-        if (timerRef.current) clearTimeout(timerRef.current);
-        setActivePhotoId(null);
-        isDisplayingRef.current = false;
-      }
+    }
+
+    // 3. OPTIONAL: MANUAL OVERRIDE
+    // If you want a specific gesture to force-close it (like a fist), keep this.
+    // Otherwise, it will strictly stay for 5 seconds.
+    if (newState.gesture === 'Closed_Fist' && isDisplayingRef.current) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setActivePhotoId(null);
+      isDisplayingRef.current = false;
     }
   }, [triggerNextPhoto]);
 
@@ -87,7 +87,7 @@ function App() {
 
   const handleManualGesture = (gesture: string) => {
     if (gesture === 'Pointing_Up') {
-       gestureLockRef.current = false; // Reset lock for manual clicks
+       gestureLockRef.current = false;
        triggerNextPhoto();
     } else {
        setGestureState(prev => ({ ...prev, isHandDetected: true, gesture: gesture as any }));
@@ -102,9 +102,9 @@ function App() {
           simulationMode={simulationMode}
           activePhotoId={activePhotoId}
           setActivePhotoId={setActivePhotoId}
+          // Ensure the 3D component doesn't internally reset based on gesture
           onPhotoClose={() => {
-            setActivePhotoId(null);
-            isDisplayingRef.current = false;
+            // Only allows manual closure if necessary
           }}
         />
       </div>
