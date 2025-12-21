@@ -39,6 +39,7 @@ export const PHOTO_URLS = [
   '/photo9.jpg',
   '/photo10.jpg',
   '/photo11.jpg',
+]
   
 
 export const CONFIG = {
