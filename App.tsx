@@ -14,71 +14,72 @@ function App() {
 
   const [simulationMode, setSimulationMode] = useState(false);
   const [activePhotoId, setActivePhotoId] = useState<number | null>(null);
-  
-  // New State: Queue of photo indices that haven't been shown yet in this round
   const [shuffledQueue, setShuffledQueue] = useState<number[]>([]);
   
-  // Use a ref to track if a gesture has already triggered a photo 
-  // This prevents the "Pointing" gesture from cycling through 10 photos in 1 second
-  const hasTriggeredRef = useRef(false);
+  // REFS for immediate logic execution (avoids delay)
+  const isCurrentlyShowingRef = useRef(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Helper: Shuffle an array (Fisher-Yates)
-  const shuffle = (array: number[]) => {
-    const newArr = [...array];
-    for (let i = newArr.length - 1; i > 0; i--) {
+  // Helper: Shuffle indices
+  const getShuffledIndices = () => {
+    const arr = Array.from({ length: PHOTO_URLS.length }, (_, i) => i);
+    for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+      [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    return newArr;
+    return arr;
   };
 
-  // Logic to get the next unique photo ID
-  const getNextPhotoId = useCallback(() => {
-    setShuffledQueue(prevQueue => {
-      let currentQueue = [...prevQueue];
-      
-      // If queue is empty, refill and shuffle for a new round
+  // Logic to show a photo and start the 5-second countdown
+  const triggerNextPhoto = useCallback(() => {
+    if (isCurrentlyShowingRef.current) return;
+
+    setShuffledQueue(prev => {
+      let currentQueue = [...prev];
       if (currentQueue.length === 0) {
-        const allIndices = Array.from({ length: PHOTO_URLS.length }, (_, i) => i);
-        currentQueue = shuffle(allIndices);
+        currentQueue = getShuffledIndices();
       }
       
       const nextId = currentQueue.pop();
       setActivePhotoId(nextId ?? 0);
-      
+      isCurrentlyShowingRef.current = true;
+
+      // Start 5-second timer to auto-hide
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setActivePhotoId(null);
+        isCurrentlyShowingRef.current = false;
+      }, 5000);
+
       return currentQueue;
     });
   }, []);
 
-  // Listen for Pointing gesture to trigger the next photo
-  useEffect(() => {
-    if (gestureState.gesture === 'Pointing_Up') {
-      if (!hasTriggeredRef.current) {
-        getNextPhotoId();
-        hasTriggeredRef.current = true;
-      }
-    } else if (gestureState.gesture === 'None' || gestureState.gesture === 'Closed_Fist') {
-      // Reset trigger lock and close photo
-      hasTriggeredRef.current = false;
-      setActivePhotoId(null);
-    }
-  }, [gestureState.gesture, getNextPhotoId]);
-
-  // Handler for Vision updates
+  // Update Gesture State and trigger logic
   const handleVisionUpdate = useCallback((newState: GestureState) => {
     setGestureState(newState);
+
+    // TRIGGER: If finger points and nothing is showing, show it NOW.
+    if (newState.gesture === 'Pointing_Up' && !isCurrentlyShowingRef.current) {
+      triggerNextPhoto();
+    }
+    
+    // RESET TRIGGER LOCK: If hand is removed or fist made, allow next point immediately
+    if (newState.gesture === 'None' || newState.gesture === 'Closed_Fist') {
+       if (!activePhotoId) {
+          isCurrentlyShowingRef.current = false;
+       }
+    }
+  }, [triggerNextPhoto, activePhotoId]);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
-  // Handler for Manual Simulation updates
   const handleManualGesture = (gesture: string) => {
     if (gesture === 'Pointing_Up') {
-       // Reset trigger lock so manual point works every time
-       hasTriggeredRef.current = false; 
-       setGestureState(prev => ({ ...prev, isHandDetected: true, gesture: 'Pointing_Up' }));
-       // Auto-reset gesture after 500ms
-       setTimeout(() => {
-          setGestureState(prev => ({ ...prev, gesture: 'None' }));
-       }, 500);
+       triggerNextPhoto();
     } else {
        setGestureState(prev => ({ ...prev, isHandDetected: true, gesture: gesture as any }));
     }
@@ -86,25 +87,24 @@ function App() {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden select-none">
-      
-      {/* 3D World */}
       <div className="absolute inset-0 z-0">
         <Experience 
           gestureState={gestureState} 
           simulationMode={simulationMode}
           activePhotoId={activePhotoId}
           setActivePhotoId={setActivePhotoId}
-          onPhotoClose={() => setActivePhotoId(null)}
+          onPhotoClose={() => {
+            setActivePhotoId(null);
+            isCurrentlyShowingRef.current = false;
+          }}
         />
       </div>
 
-      {/* Camera Logic */}
       <VisionController 
         onUpdate={handleVisionUpdate} 
         simulationMode={simulationMode} 
       />
 
-      {/* UI Layer */}
       <UIOverlay 
         simulationMode={simulationMode} 
         setSimulationMode={setSimulationMode}
