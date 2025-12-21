@@ -7,8 +7,7 @@ import { GestureState } from '../types';
 // 1. Place your .mp3 file in a 'public' folder or import it if using a bundler.
 // 2. Replace the URL below with your file path (e.g., "/music/my-song.mp3").
 // ----------------------------------------------------------------------
-const AUDIO_SOURCE = 'https://assets.mixkit.co/music/preview/mixkit-christmas-magic-276.mp3';
-
+const AUDIO_SOURCE = "/christmas-tree/music.mp3"; 
 interface UIOverlayProps {
   simulationMode: boolean;
   setSimulationMode: (v: boolean) => void;
@@ -16,12 +15,7 @@ interface UIOverlayProps {
   setManualGesture: (g: string) => void;
 }
 
-export const UIOverlay: React.FC<UIOverlayProps> = ({ 
-  simulationMode, 
-  setSimulationMode, 
-  gestureState,
-  setManualGesture 
-}) => {
+
   const [isMagicHandOpen, setIsMagicHandOpen] = useState(false);
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -32,7 +26,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
   useEffect(() => {
     const audio = new Audio(AUDIO_SOURCE);
     audio.loop = true;
-    audio.volume = 0.5;
+    audio.volume = 0.4;
     audioRef.current = audio;
 
     return () => {
