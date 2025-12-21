@@ -159,12 +159,28 @@ const SceneContent = ({ gestureState, activePhotoId, setActivePhotoId, onPhotoCl
 export const Experience: React.FC<ExperienceProps> = (props) => {
   return (
     <Canvas
-      camera={{ position: [0, 4, 14], fov: 45 }}
-      gl={{ antialias: false, toneMapping: THREE.ReinhardToneMapping, toneMappingExposure: 1.5 }}
-      dpr={[1, 2]}
-    >
-      <SceneContent {...props} />
-      {!props.gestureState.isHandDetected && <OrbitControls enablePan={false} maxPolarAngle={Math.PI / 1.5} />}
-    </Canvas>
+  camera={{ 
+    // If width < height (mobile), move camera back to 18 and widen FOV to 50
+    // If width > height (desktop), stay at your original 14 with FOV 45
+    position: [0, 4, window.innerWidth < window.innerHeight ? 18 : 14], 
+    fov: window.innerWidth < window.innerHeight ? 50 : 45 
+  }}
+  gl={{ 
+    antialias: false, 
+    toneMapping: THREE.ReinhardToneMapping, 
+    toneMappingExposure: 1.5 
+  }}
+  dpr={[1, 2]}
+>
+  <SceneContent {...props} />
+  {!props.gestureState.isHandDetected && (
+    <OrbitControls 
+      enablePan={false} 
+      maxPolarAngle={Math.PI / 1.5} 
+      // Prevents the user from zooming in too close on mobile
+      minDistance={window.innerWidth < window.innerHeight ? 10 : 5}
+    />
+  )}
+</Canvas>
   );
 };
