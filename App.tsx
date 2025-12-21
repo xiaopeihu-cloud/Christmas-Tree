@@ -16,9 +16,10 @@ function App() {
   const [activePhotoId, setActivePhotoId] = useState<number | null>(null);
   const [shuffledQueue, setShuffledQueue] = useState<number[]>([]);
   
-  // REFS for immediate logic execution (avoids delay)
-  const isCurrentlyShowingRef = useRef(false);
+  // REFS FOR INSTANT LOGIC
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isDisplayingRef = useRef(false); // Is a photo currently on screen?
+  const gestureLockRef = useRef(false); // Has this specific "pointing session" already triggered a photo?
 
   // Helper: Shuffle indices
   const getShuffledIndices = () => {
@@ -30,9 +31,12 @@ function App() {
     return arr;
   };
 
-  // Logic to show a photo and start the 5-second countdown
   const triggerNextPhoto = useCallback(() => {
-    if (isCurrentlyShowingRef.current) return;
+    // 1. Block if a photo is already being displayed
+    if (isDisplayingRef.current) return;
+    
+    // 2. Set display lock immediately (Synchronous)
+    isDisplayingRef.current = true;
 
     setShuffledQueue(prev => {
       let currentQueue = [...prev];
@@ -42,43 +46,48 @@ function App() {
       
       const nextId = currentQueue.pop();
       setActivePhotoId(nextId ?? 0);
-      isCurrentlyShowingRef.current = true;
 
       // Start 5-second timer to auto-hide
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setActivePhotoId(null);
-        isCurrentlyShowingRef.current = false;
+        isDisplayingRef.current = false;
+        // Note: gestureLock remains TRUE until the user stops pointing
       }, 5000);
 
       return currentQueue;
     });
   }, []);
 
-  // Update Gesture State and trigger logic
   const handleVisionUpdate = useCallback((newState: GestureState) => {
     setGestureState(newState);
 
-    // TRIGGER: If finger points and nothing is showing, show it NOW.
-    if (newState.gesture === 'Pointing_Up' && !isCurrentlyShowingRef.current) {
-      triggerNextPhoto();
+    if (newState.gesture === 'Pointing_Up') {
+      // Only trigger if we aren't displaying AND we haven't already triggered for this specific point
+      if (!isDisplayingRef.current && !gestureLockRef.current) {
+        triggerNextPhoto();
+        gestureLockRef.current = true; // Lock it! User must stop pointing to unlock.
+      }
+    } else {
+      // User lowered their finger or changed gesture -> Unlock for next time
+      gestureLockRef.current = false;
+      
+      // If user makes a fist, close the current photo early
+      if (newState.gesture === 'Closed_Fist' && isDisplayingRef.current) {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setActivePhotoId(null);
+        isDisplayingRef.current = false;
+      }
     }
-    
-    // RESET TRIGGER LOCK: If hand is removed or fist made, allow next point immediately
-    if (newState.gesture === 'None' || newState.gesture === 'Closed_Fist') {
-       if (!activePhotoId) {
-          isCurrentlyShowingRef.current = false;
-       }
-    }
-  }, [triggerNextPhoto, activePhotoId]);
+  }, [triggerNextPhoto]);
 
-  // Clean up timer on unmount
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, []);
 
   const handleManualGesture = (gesture: string) => {
     if (gesture === 'Pointing_Up') {
+       gestureLockRef.current = false; // Reset lock for manual clicks
        triggerNextPhoto();
     } else {
        setGestureState(prev => ({ ...prev, isHandDetected: true, gesture: gesture as any }));
@@ -95,22 +104,13 @@ function App() {
           setActivePhotoId={setActivePhotoId}
           onPhotoClose={() => {
             setActivePhotoId(null);
-            isCurrentlyShowingRef.current = false;
+            isDisplayingRef.current = false;
           }}
         />
       </div>
 
-      <VisionController 
-        onUpdate={handleVisionUpdate} 
-        simulationMode={simulationMode} 
-      />
-
-      <UIOverlay 
-        simulationMode={simulationMode} 
-        setSimulationMode={setSimulationMode}
-        gestureState={gestureState}
-        setManualGesture={handleManualGesture}
-      />
+      <VisionController onUpdate={handleVisionUpdate} simulationMode={simulationMode} />
+      <UIOverlay simulationMode={simulationMode} setSimulationMode={setSimulationMode} gestureState={gestureState} setManualGesture={handleManualGesture} />
     </div>
   );
 }
