@@ -51,8 +51,3 @@ export const CONFIG = {
   UNLEASH_SPEED: 2.5,
   RETURN_SPEED: 1.5,
 };
-
-// Placeholder images for the gallery
-export const PHOTO_URLS = Array.from({ length: 10 }).map((_, i) => 
-  `https://picsum.photos/seed/luxury${i}/600/800`
-);
