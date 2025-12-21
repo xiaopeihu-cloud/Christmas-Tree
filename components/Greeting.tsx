@@ -13,9 +13,12 @@ export const Greeting = ({ unleashFactor }: { unleashFactor: number }) => {
       >
         <h1 className="text-4xl md:text-6xl font-serif text-white text-center tracking-[0.2em] leading-relaxed">
         Merry Christmas <br /> 
-        
-        AND <br /> 
-        
+  
+        {/* The 'AND' is now smaller and slightly more transparent */}
+        <span className="text-xl md:text-2xl opacity-60 block my-2 italic tracking-[0.5em]">
+        AND
+        </span>
+  
         Happy New Year!
 </h1>
       </div>
