@@ -29,8 +29,8 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
 }) => {
   const ref = useRef<THREE.Group>(null);
   
-  // Default aspect ratio (will update once image loads)
-  const [aspect, setAspect] = useState(0.75);
+  // Default aspect ratio 1 (square) to prevent math errors during load
+  const [aspect, setAspect] = useState(1);
 
   const frameColor = useMemo(() => {
     return FRAME_PALETTE[index % FRAME_PALETTE.length];
@@ -82,18 +82,19 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
       ref.current.position.lerp(basePos, delta * 3);
       ref.current.quaternion.slerp(state.camera.quaternion, delta * 3);
       
-      // Dynamic Scaling based on detected aspect ratio
+      // Safety check: ensure aspect is a valid number
+      const safeAspect = aspect > 0 ? aspect : 1;
+
       const camera = state.camera as THREE.PerspectiveCamera;
       const vH = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * dist;
       const vW = vH * camera.aspect;
       
-      let targetH = vH * 0.85;
-      let targetW = targetH * aspect;
+      let targetH = vH * 0.8;
+      let targetW = targetH * safeAspect;
       
-      // Ensure it doesn't overflow horizontally
-      if (targetW > vW * 0.85) {
-        targetW = vW * 0.85;
-        targetH = targetW / aspect;
+      if (targetW > vW * 0.8) {
+        targetW = vW * 0.8;
+        targetH = targetW / safeAspect;
       }
       
       ref.current.scale.lerp(new THREE.Vector3(targetW, targetH, 1), delta * 3);
@@ -111,28 +112,42 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
       }
 
       const targetScale = isAnyActive ? 0 : 1;
-      // Maintain aspect ratio while idle on the tree
-      ref.current.scale.lerp(new THREE.Vector3(0.7 * aspect * targetScale, 0.7 * targetScale, 1), delta * 4);
+      const safeAspect = aspect > 0 ? aspect : 1;
+
+      // Maintain original proportions while on the tree
+      // Using 0.8 base size
+      ref.current.scale.lerp(
+        new THREE.Vector3(0.8 * safeAspect * targetScale, 0.8 * targetScale, 1), 
+        delta * 4
+      );
     }
   });
 
   return (
     <group ref={ref}>
-      {/* 1. THE FRAME - Scales with the image aspect */}
-      <mesh position={[0, 0, -0.02]}>
+      {/* 1. THE FRAME - Slightly larger than the image to act as a border */}
+      <mesh position={[0, 0, -0.08]}>
         <boxGeometry args={[1.05, 1.05, 0.05]} />
-        <meshStandardMaterial color={frameColor} metalness={0.2} roughness={0.8} />
+        <meshStandardMaterial 
+            color={frameColor} 
+            metalness={0.1} 
+            roughness={0.9} 
+        />
       </mesh>
 
-      {/* 2. THE PHOTO - Detects aspect on load */}
+      {/* 2. THE PHOTO */}
       <Image 
         url={url} 
         transparent 
         opacity={1}
         side={THREE.DoubleSide}
         onLoad={(texture) => {
-          if (texture.image) {
-            setAspect(texture.image.width / texture.image.height);
+          if (texture && texture.image) {
+            const width = texture.image.width;
+            const height = texture.image.height;
+            if (width > 0 && height > 0) {
+              setAspect(width / height);
+            }
           }
         }}
       />
