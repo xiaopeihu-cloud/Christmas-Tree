@@ -27,31 +27,31 @@ const ResponsiveCamera = ({ gestureState, activePhotoId }: { gestureState: Gestu
   const initialZRef = useRef(14); // Reduced from 20 to 14 to fill screen
 
   useEffect(() => {
-    // Calculate aspect ratio
     const aspect = size.width / size.height;
-    
-    // Base distance for 16:9 desktop (Zoomed in)
     const baseDistance = 14;
-    
-    // Adjust for portrait (iPhone/iPad)
-    // If aspect < 1 (Portrait), we need to move back significantly to fit the height
-    // iPhone 15 Pro is approx 0.46 aspect. iPad is approx 0.7.
     let targetZ = baseDistance;
     
     if (aspect < 1) {
-      // Math to fit height roughly
-      // Moved back slightly less than before to ensure it fills screen
-      targetZ = baseDistance + (8 / aspect); 
-    } else if (aspect < 1.5) {
-      // iPad Landscape / 4:3 screens
+      // PORTRAIT (iPhone)
+      // The 7 / aspect formula ensures the camera stays far enough back 
+      // even on very tall, thin screens.
+      targetZ = baseDistance + (7 / aspect); 
+    } else if (aspect < 1.6) {
+      // SQUARE-ISH (iPad / Small Windows)
       targetZ = 18;
+    } else {
+      // WIDE BROWSER (Desktop)
+      // As the browser gets wider, 'aspect' increases. 
+      // This math moves the camera back slightly as the height of the window shrinks.
+      targetZ = baseDistance + (aspect * 1.5); 
     }
 
     initialZRef.current = targetZ;
+    
+    // Use lerp for a smooth transition if you resize the window
     camera.position.z = targetZ;
     camera.updateProjectionMatrix();
-  }, [size, camera]);
-
+  }, [size.width, size.height, camera]); // Watch width and height specifically
   useFrame((state, delta) => {
     // Camera Control via Hand (Only if NO photo active)
     if (gestureState.isHandDetected && activePhotoId === null) {
