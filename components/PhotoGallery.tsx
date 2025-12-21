@@ -115,13 +115,11 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
       ref.current.scale.lerp(new THREE.Vector3(0.5 * targetScale, 0.75 * targetScale, 1), delta * 4);
     }
   });
-
-  return (
+return (
     <group ref={ref}>
-      {/* 1. THE FRAME */}
-      {/* Increased depth to 0.1 and moved back to -0.06 to prevent overlapping */}
-      <mesh position={[0, 0, -0.06]}>
-        <boxGeometry args={[1.05, 1.05, 0.1]} />
+      {/* 1. THE FRAME - Pushed back slightly */}
+      <mesh position={[0, 0, -0.05]}>
+        <boxGeometry args={[1.1, 1.1, 0.05]} />
         <meshStandardMaterial 
           color={frameColor} 
           metalness={0.2} 
@@ -129,22 +127,13 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
         />
       </mesh>
 
-      {/* 2. THE PHOTO */}
+      {/* 2. THE PHOTO - Simplified to avoid the JS error */}
       <Image 
         url={url} 
         transparent 
-        side={THREE.DoubleSide} 
-        renderOrder={1}
-        // If the 200 OK image is still weird, we ensure the material is basic
-      >
-        {/* Inside the Image component, we can refine the material */}
-        <meshBasicMaterial 
-          attach="material" 
-          side={THREE.DoubleSide} 
-          transparent 
-          depthTest={true}
-        />
-      </Image>
+        opacity={1}
+        side={THREE.DoubleSide}
+      />
     </group>
   );
 };
