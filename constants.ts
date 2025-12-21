@@ -28,17 +28,17 @@ export const FRAME_PALETTE = [
 ];
 
 export const PHOTO_URLS = [
-  'photo1.jpg',
-  'photo2.jpg',
-  'photo3.jpg',
-  'photo4.jpg',
-  'photo5.jpg',
-  'photo6.jpg',
-  'photo7.jpg',
-  'photo8.jpg',
-  'photo9.jpg',
-  'photo10.jpg',
-  'photo11.jpg',
+  '${BASE_PATH}photo1.jpg',
+  '${BASE_PATH}photo2.jpg',
+  '${BASE_PATH}photo3.jpg',
+  '${BASE_PATH}photo4.jpg',
+  '${BASE_PATH}photo5.jpg',
+  '${BASE_PATH}photo6.jpg',
+  '${BASE_PATH}photo7.jpg',
+  '${BASE_PATH}photo8.jpg',
+  '${BASE_PATH}photo9.jpg',
+  '${BASE_PATH}photo10.jpg',
+  '${BASE_PATH}photo11.jpg',
 ]
   
 
