@@ -27,12 +27,26 @@ export const FRAME_PALETTE = [
   '#E6D4CF', // Pink
 ];
 
+export const PHOTO_URLS = [
+  '/photo1.jpg',
+  '/photo2.jpg',
+  '/photo3.jpg',
+  '/photo4.jpg',
+  '/photo5.jpg',
+  '/photo6.jpg',
+  '/photo7.jpg',
+  '/photo8.jpg',
+  '/photo9.jpg',
+  '/photo10.jpg',
+  '/photo11.jpg',
+  
+
 export const CONFIG = {
   TREE_HEIGHT: 12,
   TREE_RADIUS: 4.5,
   PARTICLE_COUNT: 7500,
   ORNAMENT_COUNT: 150, // Total count will be split among types
-  PHOTO_COUNT: 10,
+  PHOTO_COUNT: 11,
   UNLEASH_SPEED: 2.5,
   RETURN_SPEED: 1.5,
 };
